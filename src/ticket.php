@@ -42,7 +42,10 @@ foreach ($attachments as $a) {
 }
 
 function attachmentLink(array $a): string {
-    return '<a href="' . h($a['local_path']) . '" target="_blank">📎 ' . h($a['filename']) . '</a>';
+    // Encode each path segment separately — rawurlencode would also
+    // escape the "/" separators if applied to the whole string at once.
+    $encodedPath = implode('/', array_map('rawurlencode', explode('/', $a['local_path'])));
+    return '<a href="' . h($encodedPath) . '" target="_blank">📎 ' . h($a['filename']) . '</a>';
 }
 
 pageHead(($ticket['subject'] ?: '(no subject)') . ' — Ticket Archive');

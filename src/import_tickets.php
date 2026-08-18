@@ -91,9 +91,16 @@ function toDatetime(?string $iso): ?string {
     }
 }
 
-// Attachments were downloaded by download_attachments.php into ./attachments/{ticket_id}/{filename}
+// download_attachments.py sanitizes filenames before saving to disk (keeps
+// letters/numbers/._- and spaces, replaces everything else with "_") — this
+// has to produce the exact same result or the two won't agree on a filename.
+function sanitizeFilename(string $name): string {
+    return preg_replace('/[^\p{L}\p{N}._\- ]/u', '_', $name);
+}
+
+// Attachments were downloaded by download_attachments.py into ./attachments/{ticket_id}/{filename}
 function localAttachmentPath(int $ticketId, string $filename): string {
-    return "attachments/$ticketId/" . $filename;
+    return "attachments/$ticketId/" . sanitizeFilename($filename);
 }
 
 function importAttachments(PDO $pdo, $stmt, array $attachments, int $ticketId, ?int $noteId): void {

@@ -4,20 +4,32 @@ Downloads every ticket/note attachment referenced in your Freshdesk JSON export,
 before the signed S3 URLs expire (they're valid for 7 days from export time).
 
 USAGE:
-    python3 download_attachments.py /path/to/folder/with/Tickets*.json
+    python3 download_attachments.py /path/to/folder/with/Tickets*.json [output_folder]
+
+    output_folder defaults to ./attachments (relative to wherever you run this).
+    Point it at src/attachments so the files land where the web app expects them —
+    see the note on linking below.
 
 Run this on your own machine (not in a sandboxed environment) since it needs
 to reach s3.amazonaws.com directly.
 
-Requires: pip install requests
+IMPORTANT — how these files get linked to tickets:
+import_tickets.php records each attachment's path as "attachments/{ticket_id}/{filename}",
+relative to wherever search.php/ticket.php are served from. That means this
+output_folder needs to end up inside your deployed src/ directory (i.e.
+src/attachments/) — not just anywhere on the server — or the download links on
+the ticket page will 404. Simplest: run this script with output_folder set to
+your repo's src/attachments before you deploy, so it's already in place.
+
+No dependencies beyond Python 3's standard library — nothing to pip install.
 """
 
 import json
 import sys
 import time
+import urllib.request
+import urllib.error
 from pathlib import Path
-from urllib.parse import urlparse
-import requests
 
 def sanitize_filename(name: str) -> str:
     return "".join(c if c.isalnum() or c in "._- " else "_" for c in name)
@@ -37,14 +49,20 @@ def iter_attachments(ticket: dict):
             if url and fname:
                 yield ticket_id, fname, url
 
+def download(url: str, dest: Path, timeout: int = 30) -> None:
+    req = urllib.request.Request(url, headers={"User-Agent": "fresharchive-downloader/1.0"})
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        dest.write_bytes(resp.read())
+
 def main():
-    if len(sys.argv) != 2:
-        print("Usage: python3 download_attachments.py /path/to/folder/with/Tickets*.json")
+    if len(sys.argv) not in (2, 3):
+        print("Usage: python3 download_attachments.py /path/to/folder/with/Tickets*.json [output_folder]")
         sys.exit(1)
 
     src_dir = Path(sys.argv[1])
-    out_dir = Path("attachments")
-    out_dir.mkdir(exist_ok=True)
+    out_dir = Path(sys.argv[2]) if len(sys.argv) == 3 else Path("attachments")
+    out_dir.mkdir(parents=True, exist_ok=True)
+    print(f"Writing attachments to: {out_dir.resolve()}")
 
     ticket_files = sorted(src_dir.glob("Tickets*.json"))
     if not ticket_files:
@@ -77,12 +95,16 @@ def main():
 
                 for attempt in range(3):
                     try:
-                        resp = requests.get(url, timeout=30)
-                        resp.raise_for_status()
-                        dest.write_bytes(resp.content)
+                        download(url, dest)
                         downloaded += 1
                         if downloaded % 25 == 0:
                             print(f"  ...{downloaded} downloaded so far")
+                        break
+                    except urllib.error.HTTPError as e:
+                        # 4xx/5xx from S3 — most commonly a 403 from an expired signed URL.
+                        # Retrying won't help an expired link, so fail fast on this one.
+                        failed.append((ticket_id, fname, f"HTTP {e.code}: {e.reason}"))
+                        print(f"  FAILED: ticket {ticket_id} / {fname}: HTTP {e.code} {e.reason}")
                         break
                     except Exception as e:
                         if attempt == 2:
