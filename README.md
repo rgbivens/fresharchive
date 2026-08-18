@@ -5,11 +5,15 @@ built for organizations who exported their Freshdesk data as JSON and want
 to keep old tickets searchable and readable after their subscription ends,
 without paying to keep Freshdesk itself around.
 
+<img width="976" height="929" alt="Main Page" src="https://github.com/user-attachments/assets/095042b5-c33a-4d78-8fe9-5db279a4dd3c" />
+
 Freshdesk's JSON export gives you tickets, conversations, contacts, agents,
 companies, and groups as flat files. This tool loads them into MySQL and
 gives you a small, fast, filterable search UI in front of them — status,
 priority, agent, company, date range, and full-text search across subjects,
 descriptions, and replies.
+
+<img width="976" height="929" alt="Ticket-View" src="https://github.com/user-attachments/assets/b0a6b695-ac14-4b2e-870f-67984abcfe01" />
 
 **What this is not:** a live helpdesk. There's no ticket creation, no
 replying, no notifications — this is read-only, for looking things up.
