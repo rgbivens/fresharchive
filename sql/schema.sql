@@ -53,7 +53,8 @@ CREATE TABLE IF NOT EXISTS tickets (
     updated_at DATETIME NULL,
     due_by DATETIME NULL,
 
-    -- generated column mirrors `description` so FULLTEXT can index it alongside subject
+    -- InnoDB supports FULLTEXT directly on TEXT/MEDIUMTEXT columns (MySQL 5.6+ /
+    -- MariaDB 10.0.5+) — no generated column needed, this indexes both columns as-is
     FULLTEXT KEY ft_subject_description (subject, description),
 
     KEY idx_tickets_status (status),

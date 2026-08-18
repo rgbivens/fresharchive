@@ -37,6 +37,19 @@ below. This repo, as published, contains none of that — only the code.
 5. **`src/search.php`** and **`src/ticket.php`** — the actual browsable,
    filterable, full-text-searchable web UI.
 
+## Getting your Freshdesk export
+
+In Freshdesk: **Admin → Workflows → Data Export** (older accounts: **Admin →
+Data Export**), then request a full export. Freshdesk emails you a link to a
+zip once it's ready — for a large account this can take a while to generate.
+Unzip it and you'll have the flat JSON files this tool reads: `Tickets*.json`
+(one or more, numbered), `Users*.json`, `Companies0.json`, `Groups.json`,
+`AllAgents0.json`, etc.
+
+The attachment URLs inside those `Tickets*.json` files are signed S3 links
+that expire about a week after export — see step 3 below, and don't sit on
+the export too long before running it.
+
 ## Quick start
 
 Requires PHP 8+ with `pdo_mysql`, and a MySQL/MariaDB database.
@@ -53,8 +66,12 @@ mysql -u root fresharchive < sql/schema.sql
 cp src/config.example.php src/config.php
 # edit src/config.php with your real database host/name/user/password
 
-# 3. Get your Freshdesk export data ready (see "Handling your data safely" below)
-python3 tools/download_attachments.py /path/to/your/export/folder
+# 3. Download attachments — straight into src/attachments, which is where
+# the web app expects to find them (see "Handling your data safely" below).
+# Optional first: tools/estimate_attachment_size.py /path/to/your/export/folder
+# tells you the total download size without fetching anything, if you want
+# to know what you're in for first.
+python3 tools/download_attachments.py /path/to/your/export/folder src/attachments
 
 # 4. Import
 php src/import_tickets.php /path/to/your/export/folder
@@ -65,6 +82,10 @@ php -S localhost:8000 -t src
 ```
 
 Then visit `http://localhost:8000/search.php`.
+
+> Both import scripts are safe to re-run — they upsert rather than
+> duplicate — so if step 3 or 4 fails partway through (e.g. the network
+> drops mid-download), just run it again.
 
 ## Handling your data safely
 
