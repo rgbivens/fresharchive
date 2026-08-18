@@ -1,0 +1,15 @@
+# Real database credentials — never commit this, only config.example.php
+src/config.php
+
+# Freshdesk export data and downloaded attachments contain customer PII —
+# these should never enter git history. Keep your local exports in data/
+# (or anywhere outside the repo) and this still catches strays.
+/data/
+attachments/
+*.json
+
+# OS / editor cruft
+.DS_Store
+.vscode/
+.idea/
+*.log
