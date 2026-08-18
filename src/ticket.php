@@ -58,9 +58,9 @@ pageHead(($ticket['subject'] ?: '(no subject)') . ' — Ticket Archive');
 <dl class="meta-grid">
   <div><dt>Status</dt><dd><?= h($ticket['status_name']) ?></dd></div>
   <div><dt>Priority</dt><dd><?= h($ticket['priority_name']) ?></dd></div>
-  <div><dt>Requester</dt><dd><?= h($ticket['requester_name']) ?></dd></div>
+  <div><dt>Requester</dt><dd><?php if ($ticket['requester_id']): ?><a class="meta-link" href="search.php?requester_id=<?= (int)$ticket['requester_id'] ?>"><?= h($ticket['requester_name']) ?></a><?php else: ?><?= h($ticket['requester_name']) ?><?php endif; ?></dd></div>
   <div><dt>Company</dt><dd><?= h($ticket['company_name'] ?: '—') ?></dd></div>
-  <div><dt>Agent</dt><dd><?= h($ticket['responder_name'] ?: 'Unassigned') ?></dd></div>
+  <div><dt>Agent</dt><dd><?php if ($ticket['responder_id']): ?><a class="meta-link" href="search.php?agent=<?= (int)$ticket['responder_id'] ?>"><?= h($ticket['responder_name']) ?></a><?php else: ?><?= h($ticket['responder_name'] ?: 'Unassigned') ?><?php endif; ?></dd></div>
   <div><dt>Group</dt><dd><?= h($ticket['group_name'] ?: '—') ?></dd></div>
   <div><dt>Source</dt><dd><?= h($ticket['source_name']) ?></dd></div>
   <div><dt>Created</dt><dd><?= formatDate($ticket['created_at']) ?></dd></div>

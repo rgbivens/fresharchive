@@ -10,6 +10,17 @@ $group     = $_GET['group'] ?? '';
 $agent     = $_GET['agent'] ?? '';
 $company   = $_GET['company'] ?? '';
 $requester = trim($_GET['requester'] ?? '');
+$requesterId = $_GET['requester_id'] ?? '';
+
+if ($requesterId !== '') {
+    // Reflect the active filter back into the visible search field, since
+    // arriving here is a click, not a form submission.
+    $nameStmt = $pdo->prepare("SELECT name FROM requesters WHERE id = :id");
+    $nameStmt->execute([':id' => $requesterId]);
+    if ($resolvedName = $nameStmt->fetchColumn()) {
+        $requester = $resolvedName;
+    }
+}
 $dateFrom  = $_GET['from'] ?? '';
 $dateTo    = $_GET['to'] ?? '';
 $page      = max(1, (int)($_GET['page'] ?? 1));
@@ -43,7 +54,11 @@ if ($company !== '') {
     $where[] = 't.company_id = :company';
     $params[':company'] = $company;
 }
-if ($requester !== '') {
+if ($requesterId !== '') {
+    // Exact match — used when arriving via a "click a requester's name" link.
+    $where[] = 't.requester_id = :requester_id';
+    $params[':requester_id'] = $requesterId;
+} elseif ($requester !== '') {
     $where[] = 't.requester_name LIKE :requester';
     $params[':requester'] = '%' . $requester . '%';
 }
@@ -65,7 +80,7 @@ $totalPages = max(1, (int)ceil($total / $perPage));
 $page = min($page, $totalPages);
 $offset = ($page - 1) * $perPage;
 
-$sql = "SELECT t.id, t.subject, t.requester_name, t.responder_name, t.status_name,
+$sql = "SELECT t.id, t.subject, t.requester_id, t.requester_name, t.responder_id, t.responder_name, t.status_name,
                t.priority_name, t.created_at, t.group_id, g.name AS group_name
         FROM tickets t
         LEFT JOIN `groups` g ON g.id = t.group_id
@@ -84,7 +99,29 @@ $companiesList = $pdo->query("SELECT id, name FROM companies ORDER BY name")->fe
 
 function qs(array $overrides = []): string {
     $params = array_merge($_GET, $overrides);
+    $params = array_filter($params, fn($v) => $v !== null && $v !== '');
     return http_build_query($params);
+}
+
+// Windowed page list: first, last, current ± $delta, with '…' for gaps —
+// avoids rendering hundreds of page links in a single unbroken row.
+function paginationItems(int $current, int $total, int $delta = 2): array {
+    $keep = [];
+    for ($i = 1; $i <= $total; $i++) {
+        if ($i === 1 || $i === $total || ($i >= $current - $delta && $i <= $current + $delta)) {
+            $keep[] = $i;
+        }
+    }
+    $items = [];
+    $prev = null;
+    foreach ($keep as $i) {
+        if ($prev !== null && $i - $prev > 1) {
+            $items[] = '…';
+        }
+        $items[] = $i;
+        $prev = $i;
+    }
+    return $items;
 }
 
 pageHead('Search — Ticket Archive');
@@ -152,8 +189,9 @@ pageHead('Search — Ticket Archive');
     <label for="to">To</label>
     <input type="date" id="to" name="to" value="<?= h($dateTo) ?>">
   </div>
-  <div class="field">
+  <div class="field actions">
     <button type="submit">Search</button>
+    <a href="search.php" class="clear-link">Clear</a>
   </div>
 </form>
 
@@ -165,32 +203,52 @@ pageHead('Search — Ticket Archive');
   <ul class="tickets">
     <?php foreach ($tickets as $t): ?>
       <li>
-        <a href="ticket.php?id=<?= (int)$t['id'] ?>" style="color:inherit; text-decoration:none;">
+        <a class="ticket-link" href="ticket.php?id=<?= (int)$t['id'] ?>">
           <div class="ticket-row">
             <span class="ticket-subject"><?= h($t['subject'] ?: '(no subject)') ?></span>
             <span class="ticket-id">#<?= (int)$t['id'] ?></span>
           </div>
-          <div class="ticket-meta">
-            <span class="badge <?= $t['status_name'] === 'Closed' ? 'status-closed' : 'status-open' ?>"><?= h($t['status_name'] ?: 'Unknown') ?></span>
-            <span><?= h($t['requester_name'] ?: 'Unknown requester') ?></span>
-            <?php if ($t['responder_name']): ?><span>Agent: <?= h($t['responder_name']) ?></span><?php endif; ?>
-            <?php if ($t['group_name']): ?><span>Group: <?= h($t['group_name']) ?></span><?php endif; ?>
-            <span><?= formatDate($t['created_at']) ?></span>
-          </div>
         </a>
+        <div class="ticket-meta">
+          <span class="badge <?= $t['status_name'] === 'Closed' ? 'status-closed' : 'status-open' ?>"><?= h($t['status_name'] ?: 'Unknown') ?></span>
+          <?php if ($t['requester_id']): ?>
+            <a class="meta-link" href="?<?= qs(['requester_id' => $t['requester_id'], 'requester' => null, 'page' => null]) ?>"><?= h($t['requester_name'] ?: 'Unknown requester') ?></a>
+          <?php else: ?>
+            <span><?= h($t['requester_name'] ?: 'Unknown requester') ?></span>
+          <?php endif; ?>
+          <?php if ($t['responder_name']): ?>
+            <span>Agent:
+              <?php if ($t['responder_id']): ?>
+                <a class="meta-link" href="?<?= qs(['agent' => $t['responder_id'], 'page' => null]) ?>"><?= h($t['responder_name']) ?></a>
+              <?php else: ?>
+                <?= h($t['responder_name']) ?>
+              <?php endif; ?>
+            </span>
+          <?php endif; ?>
+          <?php if ($t['group_name']): ?><span>Group: <?= h($t['group_name']) ?></span><?php endif; ?>
+          <span><?= formatDate($t['created_at']) ?></span>
+        </div>
       </li>
     <?php endforeach; ?>
   </ul>
 
   <?php if ($totalPages > 1): ?>
     <div class="pagination">
-      <?php for ($p = 1; $p <= $totalPages; $p++): ?>
-        <?php if ($p === $page): ?>
-          <span class="current"><?= $p ?></span>
+      <?php if ($page > 1): ?>
+        <a href="?<?= qs(['page' => $page - 1]) ?>">&larr; Prev</a>
+      <?php endif; ?>
+      <?php foreach (paginationItems($page, $totalPages) as $item): ?>
+        <?php if ($item === '…'): ?>
+          <span class="ellipsis">…</span>
+        <?php elseif ($item === $page): ?>
+          <span class="current"><?= $item ?></span>
         <?php else: ?>
-          <a href="?<?= qs(['page' => $p]) ?>"><?= $p ?></a>
+          <a href="?<?= qs(['page' => $item]) ?>"><?= $item ?></a>
         <?php endif; ?>
-      <?php endfor; ?>
+      <?php endforeach; ?>
+      <?php if ($page < $totalPages): ?>
+        <a href="?<?= qs(['page' => $page + 1]) ?>">Next &rarr;</a>
+      <?php endif; ?>
     </div>
   <?php endif; ?>
 <?php endif; ?>

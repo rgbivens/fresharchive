@@ -116,9 +116,12 @@ function pageHead(string $title): void {
     align-items: end;
   }
   form.filters .field { display: flex; flex-direction: column; gap: 4px; }
+  form.filters .field.actions { flex-direction: row; align-items: center; gap: 12px; }
   form.filters label { font-size: 12px; color: var(--ink-soft); font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; }
   form.filters .search-field { flex: 1 1 280px; }
   form.filters .search-field input { width: 100%; }
+  a.clear-link { color: var(--ink-soft); font-size: 13px; }
+  a.clear-link:hover { color: var(--accent); }
   .result-count { color: var(--ink-soft); font-size: 13px; margin: 18px 2px 10px; }
   ul.tickets { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
   ul.tickets li {
@@ -128,16 +131,21 @@ function pageHead(string $title): void {
     padding: 14px 16px;
   }
   ul.tickets li:hover { border-color: var(--accent); }
+  a.ticket-link { color: inherit; text-decoration: none; display: block; }
   .ticket-row { display: flex; justify-content: space-between; gap: 14px; align-items: baseline; }
   .ticket-subject { font-weight: 600; font-size: 15px; }
+  a.ticket-link:hover .ticket-subject { color: var(--accent); text-decoration: underline; }
   .ticket-id { font-family: var(--mono); font-size: 12px; color: var(--ink-soft); }
   .ticket-meta { margin-top: 6px; font-size: 13px; color: var(--ink-soft); display: flex; gap: 14px; flex-wrap: wrap; }
+  a.meta-link { color: var(--ink-soft); border-bottom: 1px dotted var(--ink-soft); }
+  a.meta-link:hover { color: var(--accent); border-bottom-color: var(--accent); text-decoration: none; }
   .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; }
   .badge.status-open { background: #fbeadf; color: var(--open); }
   .badge.status-closed { background: #eceeed; color: var(--closed); }
-  .pagination { display: flex; gap: 8px; margin-top: 24px; }
+  .pagination { display: flex; gap: 8px; margin-top: 24px; flex-wrap: wrap; align-items: center; }
   .pagination a, .pagination span { padding: 6px 12px; border: 1px solid var(--line); border-radius: 6px; font-size: 13px; }
-  .pagination .current { background: var(--accent); color: white; border-color: var(--accent); }
+  .pagination .current { background: var(--accent); color: white; border-color: var(--accent); font-weight: 600; }
+  .pagination .ellipsis { border: none; padding: 6px 2px; color: var(--ink-soft); }
   .empty { text-align: center; padding: 50px 20px; color: var(--ink-soft); }
 
   /* ticket detail */
