@@ -11,6 +11,7 @@ $agent     = $_GET['agent'] ?? '';
 $company   = $_GET['company'] ?? '';
 $requester = trim($_GET['requester'] ?? '');
 $requesterId = $_GET['requester_id'] ?? '';
+$displayId = trim($_GET['display_id'] ?? '');
 
 if ($requesterId !== '') {
     // Reflect the active filter back into the visible search field, since
@@ -70,6 +71,10 @@ if ($dateTo !== '') {
     $where[] = 't.created_at <= :dto';
     $params[':dto'] = $dateTo . ' 23:59:59';
 }
+if ($displayId !== '') {
+    $where[] = 't.display_id = :display_id';
+    $params[':display_id'] = $displayId;
+}
 
 $whereSql = implode(' AND ', $where);
 
@@ -80,7 +85,7 @@ $totalPages = max(1, (int)ceil($total / $perPage));
 $page = min($page, $totalPages);
 $offset = ($page - 1) * $perPage;
 
-$sql = "SELECT t.id, t.subject, t.requester_id, t.requester_name, t.responder_id, t.responder_name, t.status_name,
+$sql = "SELECT t.id, t.display_id, t.subject, t.requester_id, t.requester_name, t.responder_id, t.responder_name, t.status_name,
                t.priority_name, t.created_at, t.group_id, g.name AS group_name
         FROM tickets t
         LEFT JOIN `groups` g ON g.id = t.group_id
@@ -131,6 +136,10 @@ pageHead('Search — Ticket Archive');
   <div class="field search-field">
     <label for="q">Search</label>
     <input type="text" id="q" name="q" placeholder="Subject, description, or reply text…" value="<?= h($q) ?>">
+  </div>
+  <div class="field">
+    <label for="display_id">Ticket #</label>
+    <input type="text" id="display_id" name="display_id" placeholder="e.g. 19859" value="<?= h($displayId) ?>" style="width: 110px;">
   </div>
   <div class="field">
     <label for="status">Status</label>
@@ -206,7 +215,7 @@ pageHead('Search — Ticket Archive');
         <a class="ticket-link" href="ticket.php?id=<?= (int)$t['id'] ?>">
           <div class="ticket-row">
             <span class="ticket-subject"><?= h($t['subject'] ?: '(no subject)') ?></span>
-            <span class="ticket-id">#<?= (int)$t['id'] ?></span>
+            <span class="ticket-id">#<?= $t['display_id'] ? (int)$t['display_id'] : (int)$t['id'] ?></span>
           </div>
         </a>
         <div class="ticket-meta">

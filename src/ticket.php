@@ -54,7 +54,7 @@ pageHead(($ticket['subject'] ?: '(no subject)') . ' — Ticket Archive');
 <a class="back-link" href="javascript:history.back()">&larr; Back to search</a>
 
 <div class="ticket-header">
-  <span class="ticket-id">#<?= (int)$ticket['id'] ?><?= $ticket['display_id'] ? ' (display #' . (int)$ticket['display_id'] . ')' : '' ?></span>
+  <span class="ticket-id">#<?= $ticket['display_id'] ? (int)$ticket['display_id'] : (int)$ticket['id'] ?><?= $ticket['display_id'] ? ' (system id #' . (int)$ticket['id'] . ')' : '' ?></span>
   <h1><?= h($ticket['subject'] ?: '(no subject)') ?></h1>
 </div>
 

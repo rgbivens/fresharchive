@@ -35,19 +35,26 @@ def sanitize_filename(name: str) -> str:
     return "".join(c if c.isalnum() or c in "._- " else "_" for c in name)
 
 def iter_attachments(ticket: dict):
-    """Yield (ticket_id, filename, url) for every attachment on a ticket and its notes."""
+    """Yield (ticket_id, filename, url, problem) for every attachment on a
+    ticket and its notes. problem is None for normal entries, or a short
+    string describing why an entry can't be downloaded (missing url/filename)
+    — these used to be silently dropped, which hid real data gaps."""
     ticket_id = ticket["id"]
     for att in ticket.get("attachments", []) or []:
-        url = att.get("attachment_url_for_export") or att.get("attachment_url")
-        fname = att.get("content_file_name")
-        if url and fname:
-            yield ticket_id, fname, url
+        yield from _check_attachment(ticket_id, att)
     for note in ticket.get("notes", []) or []:
         for att in note.get("attachments", []) or []:
-            url = att.get("attachment_url_for_export") or att.get("attachment_url")
-            fname = att.get("content_file_name")
-            if url and fname:
-                yield ticket_id, fname, url
+            yield from _check_attachment(ticket_id, att)
+
+def _check_attachment(ticket_id, att):
+    url = att.get("attachment_url_for_export") or att.get("attachment_url")
+    fname = att.get("content_file_name")
+    if not fname:
+        yield ticket_id, att.get("content_file_name") or "(no filename in export)", None, "missing content_file_name in export data"
+    elif not url:
+        yield ticket_id, fname, None, "no attachment_url_for_export or attachment_url in export data"
+    else:
+        yield ticket_id, fname, url, None
 
 def download(url: str, dest: Path, timeout: int = 30) -> None:
     req = urllib.request.Request(url, headers={"User-Agent": "fresharchive-downloader/1.0"})
@@ -83,8 +90,17 @@ def main():
 
         for item in data:
             ticket = item.get("helpdesk_ticket", {})
-            for ticket_id, fname, url in iter_attachments(ticket):
+            for ticket_id, fname, url, problem in iter_attachments(ticket):
                 total += 1
+
+                if problem:
+                    # Data gap in the export itself — nothing to download,
+                    # not a network failure. Report it rather than dropping
+                    # it silently, since these used to vanish with no trace.
+                    failed.append((ticket_id, fname, problem))
+                    print(f"  SKIPPED (no usable URL in export): ticket {ticket_id} / {fname} — {problem}")
+                    continue
+
                 ticket_dir = out_dir / str(ticket_id)
                 ticket_dir.mkdir(exist_ok=True)
                 dest = ticket_dir / sanitize_filename(fname)
