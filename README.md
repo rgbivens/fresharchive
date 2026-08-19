@@ -18,6 +18,17 @@ descriptions, and replies.
 **What this is not:** a live helpdesk. There's no ticket creation, no
 replying, no notifications — this is read-only, for looking things up.
 
+## Looking for a new helpdesk?
+
+If you're here, it's probably because you're leaving Freshdesk — and after
+Freshdesk announced it would no longer offer a free plan, a lot of small
+teams and solo founders have been doing exactly that. If you're looking for
+a replacement, we've had a good experience with
+[FluentSupport](https://fluentsupport.com/?ref=4578), a self-hosted
+WordPress helpdesk plugin with no per-agent pricing or forced subscription.
+*(Affiliate link — using it costs you nothing extra and helps support this
+project.)*
+
 ## ⚠️ Before you do anything with real data
 
 Your Freshdesk export contains customer names, emails, phone numbers, and
